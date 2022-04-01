@@ -29,6 +29,16 @@ use util::bip32::{ExtendedPubKey, Fingerprint, DerivationPath, ChildNumber};
 const PSBT_GLOBAL_UNSIGNED_TX: u8 = 0x00;
 /// Type: Extended Public Key PSBT_GLOBAL_XPUB = 0x01
 const PSBT_GLOBAL_XPUB: u8 = 0x01;
+/// Type: 32-bit uint PSBT_GLOBAL_TX_VERSION = 0x02
+const PSBT_GLOBAL_TX_VERSION: u8 = 0x02;
+/// Type: 32-bit uint PSBT_GLOBAL_FALLBACK_LOCKTIME = 0x03
+const PSBT_GLOBAL_FALLBACK_LOCKTIME: u8 = 0x03;
+/// Type: compact size uint PSBT_GLOBAL_INPUT_COUNT = 0x04
+const PSBT_GLOBAL_INPUT_COUNT: u8 = 0x04;
+/// Type: compact size uint PSBT_GLOBAL_OUTPUT_COUNT = 0x05
+const PSBT_GLOBAL_OUTPUT_COUNT: u8 = 0x05;
+/// Type: Modifiable Flags: Bit 0 is Inputs, Bit 1 is Outputs, Bit 2 is the Has SIGHASH_SINGLE, indicates that the Constructor must iterate the inputs to determine whether and how to add an input PSBT_GLOBAL_TX_MODIFIABLE = 0x06
+const PSBT_GLOBAL_TX_MODIFIABLE: u8 = 0x06;
 /// Type: Version Number PSBT_GLOBAL_VERSION = 0xFB
 const PSBT_GLOBAL_VERSION: u8 = 0xFB;
 /// Type: Proprietary Use Type PSBT_GLOBAL_PROPRIETARY = 0xFC

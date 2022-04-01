@@ -18,6 +18,7 @@
 //! defined at <https://github.com/bitcoin/bips/blob/master/bip-0174.mediawiki>
 //! except we define PSBTs containing non-standard sighash types as invalid.
 //!
+#![allow(dead_code)]
 
 use core::cmp;
 
