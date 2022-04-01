@@ -58,3 +58,6 @@ name = "bip32"
 [[example]]
 name = "handshake"
 required-features = ["std"]
+
+[[example]]
+name = "psbt"
