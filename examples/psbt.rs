@@ -1,17 +1,17 @@
 extern crate bitcoin;
-
 use std::{env, process};
 use std::str::FromStr;
 
 use bitcoin::secp256k1::Secp256k1;
-use bitcoin::PublicKey;
+use bitcoin::{Transaction, OutPoint, Script, TxOut, Witness, Txid, TxIn};
 use bitcoin::util::bip32::ExtendedPrivKey;
 use bitcoin::util::bip32::ExtendedPubKey;
 use bitcoin::util::bip32::DerivationPath;
 use bitcoin::util::bip32::ChildNumber;
-use bitcoin::util::address::Address;
 use bitcoin::secp256k1::ffi::types::AlignedType;
 use bitcoin::hashes::hex::FromHex;
+
+use bitcoin::psbt::*;
 
 fn main() {
     // BIP: 174 2-of-3 Multisig Workflow
@@ -19,8 +19,9 @@ fn main() {
     // This example derives root xprv from a 32-byte seed,
     // derives the child xprv with path m/84h/0h/0h,
     // Run this example with cargo and seed(hex-encoded) argument:
-    // cargo run --example psbt 7934c09359b234e076b9fa5a1abfd38e3dc2a9939745b7cc3c22a48d831d14bd
+    // cargo run --example psbt cUkG8i1RFfWGWy5ziR11zJ5V4U4W3viSFCfyJmZnvQaUsd1xuF3T
 
+    // 1. Use BIP32 wallet APIs to derive keys
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {
         eprintln!("not enough arguments. usage: {} <hex-encoded 32-byte seed>", &args[0]);
@@ -42,6 +43,7 @@ fn main() {
     let secp = Secp256k1::preallocated_new(buf.as_mut_slice()).unwrap();
 
     // calculate root key from seed
+    // should be "tprv8ZgxMBicQKsPd9TeAdPADNnSyH9SSUUbTVeFszDE23Ki6TBB5nCefAdHkK8Fm3qMQR6sHwA56zqRmKmxnHk37JkiFzvncDqoKmPWubu7hDF"
     let root = ExtendedPrivKey::new_master(network, &seed).unwrap();
 
     // derive child xpub
@@ -70,7 +72,61 @@ fn main() {
         .unwrap()
         .public_key;
 
-    // 1. Use BIP32 wallet APIs to derive all priv ⭕️/public ✅ keys
 
+    let constructor_psbt = PartiallySignedTransaction {
+        unsigned_tx: Transaction {
+            version: 2,
+            lock_time: 1257139,
+            output: vec![
+                TxOut {
+                    value: 149990000,
+                    script_pubkey: Script::from_hex(
+                        "0014d85c2b71d0060b09c9886aeb815e50991dda124d"
+                    ).unwrap(),
+                },
+                TxOut {
+                    value: 100000000,
+                    script_pubkey: Script::from_hex(
+                    "001400aea9a2e5f0f876a588df5546e8742d1d87008f"
+                    ).unwrap(),
+                },
+            ],
+            input: vec![TxIn {
+                previous_output: OutPoint {
+                    txid: Txid::from_hex(
+                        "75ddabb27b8845f5247975c8a5ba7c6f336c4570708ebe230caf6db5217ae858",
+                    ).unwrap(),
+                    vout: 0,
+                },
+                script_sig: Script::new(),
+                sequence: 4294967294,
+                witness: Witness::default(),
+            },
+            TxIn {
+                previous_output: OutPoint {
+                    txid: Txid::from_hex(
+                        "1dea7cd05979072a3578cab271c02244ea8a090bbb46aa680a65ecd027048d83",
+                    ).unwrap(),
+                    vout: 1,
+                },
+                script_sig: Script::new(),
+                sequence: 4294967294,
+                witness: Witness::default(),
+            }],
+        },
+        xpub: Default::default(),
+        version: 0,
+        proprietary: Default::default(),
+        unknown: Default::default(),
+        inputs: vec![Input::default()],
+        outputs: vec![Output::default(), Output::default()],
+    };
+    // 2. Use the sighash APIs to compute the signature hashes
+
+    // 3. Use all Psbt supported APIs
+
+    // 4. Identify the API pain-points and suggest improvements.
 
 }
+
+
