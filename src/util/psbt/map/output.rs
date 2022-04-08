@@ -30,6 +30,8 @@ use util::taproot::{LeafInfo, TapLeafHash};
 
 use util::taproot::{NodeInfo, TaprootBuilder};
 
+use crate::Amount;
+
 /// Type: Redeem Script PSBT_OUT_REDEEM_SCRIPT = 0x00
 const PSBT_OUT_REDEEM_SCRIPT: u8 = 0x00;
 /// Type: Witness Script PSBT_OUT_WITNESS_SCRIPT = 0x01
@@ -62,6 +64,11 @@ pub struct Output {
     /// corresponding master key fingerprints and derivation paths.
     #[cfg_attr(feature = "serde", serde(with = "::serde_utils::btreemap_as_seq"))]
     pub bip32_derivation: BTreeMap<secp256k1::PublicKey, KeySource>,
+    /// The output's amount
+    pub amount: Option<Amount>,
+    /// The script for this output, also known as the scriptPubKey.
+    /// Must be omitted in PSBTv0. Must be provided in PSBTv2. 
+    pub script: Option<Script>,
     /// The internal pubkey.
     pub tap_internal_key: Option<XOnlyPublicKey>,
     /// Taproot Output tree.
@@ -249,6 +256,14 @@ impl Map for Output {
 
         impl_psbt_get_pair! {
             rv.push_map(self.bip32_derivation, PSBT_OUT_BIP32_DERIVATION)
+        }
+
+        impl_psbt_get_pair! {
+            rv.push(self.amount, PSBT_OUT_AMOUNT)
+        }
+
+        impl_psbt_get_pair! {
+            rv.push(self.script, PSBT_OUT_SCRIPT)
         }
 
         impl_psbt_get_pair! {

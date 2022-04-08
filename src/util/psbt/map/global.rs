@@ -116,6 +116,9 @@ impl PartiallySignedTransaction {
         let mut version: Option<u32> = None;
         let mut unknowns: BTreeMap<raw::Key, Vec<u8>> = Default::default();
         let mut xpub_map: BTreeMap<ExtendedPubKey, (Fingerprint, DerivationPath)> = Default::default();
+        let mut tx_version: Option<i32>;
+        let mut input_count: u32 = 0;
+        let mut output_count: u32 = 0;
         let mut proprietary: BTreeMap<raw::ProprietaryKey, Vec<u8>> = Default::default();
 
         loop {
@@ -142,6 +145,32 @@ impl PartiallySignedTransaction {
 
                                     if decoder.position() != vlen as u64 {
                                         return Err(encode::Error::ParseFailed("data not consumed entirely when explicitly deserializing"))
+                                    }
+
+                                    input_count = tx.unwrap().input.len() as u32;
+                                    output_count = tx.unwrap().output.len() as u32;
+                                } else {
+                                    return Err(Error::DuplicateKey(pair.key).into())
+                                }
+                            } else {
+                                return Err(Error::InvalidKey(pair.key).into())
+                            }
+                        }
+                        PSBT_GLOBAL_TX_VERSION => {
+                            // key has to be empty
+                            if pair.key.key.is_empty() {
+                                // there can only be one version
+                                if version.is_none() {
+                                    let vlen: usize = pair.value.len();
+                                    let mut decoder = Cursor::new(pair.value);
+                                    if vlen != 4 {
+                                        return Err(encode::Error::ParseFailed("Wrong global version value length (must be 4 bytes)"))
+                                    }
+                                    tx_version = Some(Decodable::consensus_decode(&mut decoder)?);
+                                    // We only understand version 0 PSBTs. According to BIP-174 we
+                                    // should throw an error if we see anything other than version 0.
+                                    if tx_version != Some(0) {
+                                        return Err(encode::Error::ParseFailed("PSBT versions greater than 0 are not supported"))
                                     }
                                 } else {
                                     return Err(Error::DuplicateKey(pair.key).into())
@@ -225,6 +254,8 @@ impl PartiallySignedTransaction {
                 unsigned_tx: tx,
                 version: version.unwrap_or(0),
                 xpub: xpub_map,
+                input_count,
+                output_count,
                 proprietary,
                 unknown: unknowns,
                 inputs: vec![],

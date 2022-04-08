@@ -21,6 +21,7 @@
 use prelude::*;
 
 use io;
+use std::convert::TryInto;
 
 use blockdata::script::Script;
 use blockdata::witness::Witness;
@@ -31,6 +32,7 @@ use util::bip32::{ChildNumber, Fingerprint, KeySource};
 use hashes::{hash160, ripemd160, sha256, sha256d, Hash};
 use util::ecdsa::{EcdsaSig, EcdsaSigError};
 use util::psbt;
+use Amount;
 use util::taproot::{TapBranchHash, TapLeafHash, ControlBlock, LeafVersion};
 use schnorr;
 use util::key::PublicKey;
@@ -63,6 +65,18 @@ impl_psbt_hash_de_serialize!(sha256d::Hash);
 
 // taproot
 impl_psbt_de_serialize!(Vec<TapLeafHash>);
+
+impl Serialize for Amount {
+    fn serialize(&self) -> Vec<u8> {
+        self.as_sat().to_le_bytes().to_vec()
+    }
+}
+
+impl Deserialize for Amount {
+    fn deserialize(bytes: &[u8]) -> Result<Self, encode::Error> {
+        Ok(Self::from_sat(u64::from_le_bytes(bytes.try_into().expect("amount slice with incorrect length"))))
+    }
+}
 
 impl Serialize for Script {
     fn serialize(&self) -> Vec<u8> {

@@ -23,6 +23,7 @@ use blockdata::witness::Witness;
 use blockdata::transaction::{Transaction, TxOut, NonStandardSighashType, SighashTypeParseError};
 use consensus::encode;
 use hashes::{self, hash160, ripemd160, sha256, sha256d};
+use hash_types::Txid;
 use secp256k1::XOnlyPublicKey;
 use util::bip32::KeySource;
 use util::psbt;
@@ -133,6 +134,22 @@ pub struct Input {
     /// HAS256 hash to preimage map.
     #[cfg_attr(feature = "serde", serde(with = "::serde_utils::btreemap_byte_values"))]
     pub hash256_preimages: BTreeMap<sha256d::Hash, Vec<u8>>,
+    /// Txid of previous transaction containing this input
+    pub prev_txid: Option<Txid>,
+    /// Index within previous transaction containing this input
+    pub prev_out: Option<u32>,
+    /// Sequence number of this output. If omitted,
+    /// the sequence number is assumed to be the final sequence number
+    pub sequence: Option<u32>,
+    /// the minimum Unix timestamp that this input
+    /// requires to be set as the transaction's lock time.
+    pub time_locktime: Option<u32>,
+    /// the minimum block height that this input requires to be set as the
+    /// transaction's lock time
+    pub height_locktime: Option<u32>,
+    // std::optional<uint32_t> sequence;
+    // std::optional<uint32_t> time_locktime;
+    // std::optional<uint32_t> height_locktime;
     /// Serialized schnorr signature with sighash type for key spend.
     pub tap_key_sig: Option<SchnorrSig>,
     /// Map of <xonlypubkey>|<leafhash> with signature.
@@ -471,6 +488,26 @@ impl Map for Input {
 
         impl_psbt_get_pair! {
             rv.push_map(self.hash256_preimages, PSBT_IN_HASH256)
+        }
+
+        impl_psbt_get_pair!{
+            rv.push(self.prev_txid, PSBT_IN_PREVIOUS_TXID)
+        }
+
+        impl_psbt_get_pair!{
+            rv.push(self.prev_out, PSBT_IN_OUTPUT_INDEX)
+        }
+
+        impl_psbt_get_pair!{
+            rv.push(self.sequence, PSBT_IN_SEQUENCE)
+        }
+
+        impl_psbt_get_pair!{
+            rv.push(self.time_locktime, PSBT_IN_REQUIRED_TIME_LOCKTIME)
+        }
+
+        impl_psbt_get_pair!{
+            rv.push(self.height_locktime, PSBT_IN_REQUIRED_HEIGHT_LOCKTIME)
         }
 
         impl_psbt_get_pair! {

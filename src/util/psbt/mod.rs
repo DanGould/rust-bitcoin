@@ -54,11 +54,27 @@ pub struct PartiallySignedTransaction {
     /// The unsigned transaction, scriptSigs and witnesses for each input must be
     /// empty.
     pub unsigned_tx: Transaction,
-    /// The version number of this PSBT. If omitted, the version number is 0.
-    pub version: u32,
     /// A global map from extended public keys to the used key fingerprint and
     /// derivation path as defined by BIP 32
     pub xpub: BTreeMap<ExtendedPubKey, KeySource>,
+    /// The version number of the transaction being created.
+    /// Note that this is not the same as the PSBT version
+    pub tx_vesion: u32,
+    /// the transaction locktime to use if no inputs specify a required locktime. 
+    pub fallback_locktime: u32,
+    /// The number of inputs
+    pub input_count: u32,
+    /// The number of outputs
+    pub output_count: u32,
+    /// Bit 0 is the Inputs Modifiable Flag and indicates whether inputs can be modified.
+    /// Bit 1 is the Outputs Modifiable Flag and indicates whether outputs can be modified.
+    /// Bit 2 is the Has SIGHASH_SINGLE flag and indicates whether the transaction has
+    /// a SIGHASH_SINGLE signature who's input and output pairing must be preserved.
+    /// Bit 2 essentially indicates that the Constructor must iterate the inputs
+    /// to determine whether and how to add an input. 
+    pub tx_modifiable: Vec<u8>,
+    /// The version number of this PSBT. If omitted, the version number is 0.
+    pub version: u32,
     /// Global proprietary key-value pairs.
     #[cfg_attr(feature = "serde", serde(with = "::serde_utils::btreemap_as_seq_byte_values"))]
     pub proprietary: BTreeMap<raw::ProprietaryKey, Vec<u8>>,
