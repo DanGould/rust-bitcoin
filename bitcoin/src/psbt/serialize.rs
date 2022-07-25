@@ -7,6 +7,7 @@
 //!
 
 use crate::prelude::*;
+use super::Psbt;
 
 use crate::io;
 
@@ -27,7 +28,7 @@ use super::map::{Map, Input, Output, TapTree, PsbtSighashType};
 use crate::taproot::TaprootBuilder;
 /// A trait for serializing a value as raw data for insertion into PSBT
 /// key-value maps.
-pub trait Serialize {
+pub(crate) trait Serialize {
     /// Serialize a value as raw data.
     fn serialize(&self) -> Vec<u8>;
 }
@@ -38,28 +39,35 @@ pub trait Deserialize: Sized {
     fn deserialize(bytes: &[u8]) -> Result<Self, encode::Error>;
 }
 
+impl Serialize for Psbt {
+    /// Serialize a value as raw binary data.
+   fn serialize(&self) -> Vec<u8> {
+        self.serialize()
+    }
+}
+
 impl PartiallySignedTransaction {
-     /// Serialize a value as bytes in hex.
-     pub fn serialize_hex(&self) -> String {
+    /// Serialize a value as bytes in hex.
+    pub fn serialize_hex(&self) -> String {
         bitcoin_hashes::hex::ToHex::to_hex(&self.serialize()[..])
     }
 
-    /// Serialize a value as raw binary data.
+    /// Serialize as raw binary data
     pub fn serialize(&self) -> Vec<u8> {
         let mut buf: Vec<u8> = Vec::new();
 
+        //  <magic>
         buf.extend(b"psbt");
-    
         buf.push(0xff_u8);
 
-        self.serialize_map(&mut buf).unwrap();
+        buf.extend(self.serialize_map());
 
         for i in &self.inputs {
-            i.consensus_encode(&mut buf).unwrap();
+            buf.extend(i.serialize_map());
         }
 
         for i in &self.outputs {
-            i.consensus_encode(&mut buf).unwrap();
+            buf.extend(i.serialize_map());
         }
 
         buf

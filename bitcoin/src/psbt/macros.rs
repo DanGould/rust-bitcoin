@@ -40,17 +40,14 @@ macro_rules! impl_psbt_serialize {
     };
 }
 
-macro_rules! impl_psbtmap_consensus_encoding {
+macro_rules! impl_psbtmap_serialize {
     ($thing:ty) => {
-        impl $crate::consensus::Encodable for $thing {
-            fn consensus_encode<W: $crate::io::Write + ?Sized>(
-                &self,
-                w: &mut W,
-            ) -> Result<usize, $crate::io::Error> {
-                self.consensus_encode_map(w)
+        impl $crate::psbt::serialize::Serialize for $thing {
+            fn serialize(&self) -> Vec<u8> {
+                self.serialize_map()
             }
         }
-    };
+    }
 }
 
 macro_rules! impl_psbtmap_consensus_decoding {
@@ -73,12 +70,12 @@ macro_rules! impl_psbtmap_consensus_decoding {
     };
 }
 
-macro_rules! impl_psbtmap_consensus_enc_dec_oding {
-    ($thing:ty) => {
-        impl_psbtmap_consensus_decoding!($thing);
-        impl_psbtmap_consensus_encoding!($thing);
-    };
-}
+// macro_rules! impl_psbtmap_consensus_enc_dec_oding {
+//     ($thing:ty) => {
+//         impl_psbtmap_consensus_decoding!($thing);
+//         impl_psbtmap_consensus_encoding!($thing);
+//     };
+// }
 
 #[rustfmt::skip]
 macro_rules! impl_psbt_insert_pair {
