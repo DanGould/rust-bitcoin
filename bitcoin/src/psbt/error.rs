@@ -8,6 +8,7 @@ use bitcoin_internals::write_err;
 
 use crate::blockdata::transaction::Transaction;
 use crate::consensus::encode;
+use crate::io;
 use crate::psbt::raw;
 
 use crate::hashes;
@@ -22,9 +23,11 @@ pub enum PsbtHash {
     Hash256,
 }
 /// Ways that a Partially Signed Transaction might fail.
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Debug, PartialEq)]
 #[non_exhaustive]
 pub enum Error {
+    /// And I/O error.
+    Io(io::Error),
     /// Magic bytes for a PSBT must be the ASCII for "psbt" serialized in most
     /// significant byte order.
     InvalidMagic,
@@ -72,6 +75,8 @@ pub enum Error {
     /// Conflicting data during combine procedure:
     /// global extended public key has inconsistent key sources
     CombineInconsistentKeySources(Box<ExtendedPubKey>),
+    /// Parsing error.
+    ParseFailed(&'static str),
     /// Serialization error in bitcoin consensus-encoded structures
     ConsensusEncoding,
     /// Negative fee
@@ -83,6 +88,7 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
+            Error::Io(ref e) => write_err!(f, "IO error"; e),
             Error::InvalidMagic => f.write_str("invalid magic"),
             Error::MissingUtxo => f.write_str("UTXO information is not present in PSBT"),
             Error::InvalidSeparator => f.write_str("invalid separator"),
@@ -104,6 +110,7 @@ impl fmt::Display for Error {
                 write!(f, "Preimage {:?} does not match {:?} hash {:?}", preimage, hash_type, hash )
             },
             Error::CombineInconsistentKeySources(ref s) => { write!(f, "combine conflict: {}", s) },
+            Error::ParseFailed(ref s) => write!(f, "parse failed: {}", s),
             Error::ConsensusEncoding => f.write_str("bitcoin consensus or BIP-174 encoding error"),
             Error::NegativeFee => f.write_str("PSBT has a negative fee which is not allowed"),
             Error::FeeOverflow => f.write_str("integer overflow in fee calculation"),
@@ -120,6 +127,7 @@ impl std::error::Error for Error {
 
         match self {
             HashParse(e) => Some(e),
+            | Io(e) => Some(e),
             | InvalidMagic
             | MissingUtxo
             | InvalidSeparator
@@ -135,6 +143,7 @@ impl std::error::Error for Error {
             | NonStandardSighashType(_)
             | InvalidPreimageHashPair{ .. }
             | CombineInconsistentKeySources(_)
+            | ParseFailed(_)
             | ConsensusEncoding
             | NegativeFee
             | FeeOverflow => None,
@@ -150,10 +159,14 @@ impl From<hashes::Error> for Error {
 }
 
 impl From<encode::Error> for Error {
-    fn from(err: encode::Error) -> Self {
-        match err {
-            encode::Error::Psbt(err) => err,
-            _ => Error::ConsensusEncoding,
-        }
+    fn from(_: encode::Error) -> Self {
+        Error::ConsensusEncoding
+    }
+}
+
+#[doc(hidden)]
+impl From<io::Error> for Error {
+    fn from(error: io::Error) -> Self {
+        Error::Io(error)
     }
 }

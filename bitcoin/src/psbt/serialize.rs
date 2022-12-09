@@ -36,7 +36,7 @@ pub(crate) trait Serialize {
 /// A trait for deserializing a value from raw data in PSBT key-value maps.
 pub(crate) trait Deserialize: Sized {
     /// Deserialize a value from raw data.
-    fn deserialize(bytes: &[u8]) -> Result<Self, encode::Error>;
+    fn deserialize(bytes: &[u8]) -> Result<Self, Error>;
 }
 
 impl PartiallySignedTransaction {
@@ -67,15 +67,15 @@ impl PartiallySignedTransaction {
     }
 
     /// Deserialize a value from raw binary data.
-    pub fn deserialize(bytes: &[u8]) -> Result<Self, encode::Error> {
+    pub fn deserialize(bytes: &[u8]) -> Result<Self, Error> {
         let magic = &bytes[0..4];
 
         if *b"psbt" != magic {
-            return Err(Error::InvalidMagic.into());
+            return Err(Error::InvalidMagic);
         }
 
         if 0xff_u8 != bytes[4] {
-            return Err(Error::InvalidSeparator.into());
+            return Err(Error::InvalidSeparator);
         }
 
         let mut d = &bytes[5..];
@@ -132,7 +132,7 @@ impl Serialize for Script {
 }
 
 impl Deserialize for Script {
-    fn deserialize(bytes: &[u8]) -> Result<Self, encode::Error> {
+    fn deserialize(bytes: &[u8]) -> Result<Self, Error> {
         Ok(Self::from(bytes.to_vec()))
     }
 }
@@ -146,9 +146,9 @@ impl Serialize for PublicKey {
 }
 
 impl Deserialize for PublicKey {
-    fn deserialize(bytes: &[u8]) -> Result<Self, encode::Error> {
+    fn deserialize(bytes: &[u8]) -> Result<Self, Error> {
         PublicKey::from_slice(bytes)
-            .map_err(|_| encode::Error::ParseFailed("invalid public key"))
+            .map_err(|_| Error::ParseFailed("invalid public key"))
     }
 }
 
@@ -159,9 +159,9 @@ impl Serialize for secp256k1::PublicKey {
 }
 
 impl Deserialize for secp256k1::PublicKey {
-    fn deserialize(bytes: &[u8]) -> Result<Self, encode::Error> {
+    fn deserialize(bytes: &[u8]) -> Result<Self, Error> {
         secp256k1::PublicKey::from_slice(bytes)
-            .map_err(|_| encode::Error::ParseFailed("invalid public key"))
+            .map_err(|_| Error::ParseFailed("invalid public key"))
     }
 }
 
@@ -172,7 +172,7 @@ impl Serialize for ecdsa::Signature {
 }
 
 impl Deserialize for ecdsa::Signature {
-    fn deserialize(bytes: &[u8]) -> Result<Self, encode::Error> {
+    fn deserialize(bytes: &[u8]) -> Result<Self, Error> {
         // NB: Since BIP-174 says "the signature as would be pushed to the stack from
         // a scriptSig or witness" we should ideally use a consensus deserialization and do
         // not error on a non-standard values. However,
@@ -189,13 +189,13 @@ impl Deserialize for ecdsa::Signature {
         ecdsa::Signature::from_slice(bytes)
             .map_err(|e| match e {
                 ecdsa::Error::EmptySignature => {
-                    encode::Error::ParseFailed("Empty partial signature data")
+                    Error::ParseFailed("Empty partial signature data")
                 }
                 ecdsa::Error::NonStandardSighashType(flag) => {
-                    encode::Error::from(psbt::Error::NonStandardSighashType(flag))
+                    Error::from(psbt::Error::NonStandardSighashType(flag))
                 }
                 ecdsa::Error::Secp256k1(..) => {
-                    encode::Error::ParseFailed("Invalid Ecdsa signature")
+                    Error::ParseFailed("Invalid Ecdsa signature")
                 }
                 ecdsa::Error::HexEncoding(..) =>  {
                     unreachable!("Decoding from slice, not hex")
@@ -219,7 +219,7 @@ impl Serialize for KeySource {
 }
 
 impl Deserialize for KeySource {
-    fn deserialize(bytes: &[u8]) -> Result<Self, encode::Error> {
+    fn deserialize(bytes: &[u8]) -> Result<Self, Error> {
         if bytes.len() < 4 {
             return Err(io::Error::from(io::ErrorKind::UnexpectedEof).into())
         }
@@ -231,7 +231,7 @@ impl Deserialize for KeySource {
         while !d.is_empty() {
             match u32::consensus_decode(&mut d) {
                 Ok(index) => dpath.push(index.into()),
-                Err(e) => return Err(e),
+                Err(e) => return Err(e)?,
             }
         }
 
@@ -247,7 +247,7 @@ impl Serialize for Vec<u8> {
 }
 
 impl Deserialize for Vec<u8> {
-    fn deserialize(bytes: &[u8]) -> Result<Self, encode::Error> {
+    fn deserialize(bytes: &[u8]) -> Result<Self, Error> {
         Ok(bytes.to_vec())
     }
 }
@@ -259,7 +259,7 @@ impl Serialize for PsbtSighashType {
 }
 
 impl Deserialize for PsbtSighashType {
-    fn deserialize(bytes: &[u8]) -> Result<Self, encode::Error> {
+    fn deserialize(bytes: &[u8]) -> Result<Self, Error> {
         let raw: u32 = encode::deserialize(bytes)?;
         Ok(PsbtSighashType { inner: raw })
     }
@@ -273,9 +273,9 @@ impl Serialize for XOnlyPublicKey {
 }
 
 impl Deserialize for XOnlyPublicKey {
-    fn deserialize(bytes: &[u8]) -> Result<Self, encode::Error> {
+    fn deserialize(bytes: &[u8]) -> Result<Self, Error> {
         XOnlyPublicKey::from_slice(bytes)
-            .map_err(|_| encode::Error::ParseFailed("Invalid xonly public key"))
+            .map_err(|_| Error::ParseFailed("Invalid xonly public key"))
     }
 }
 
@@ -286,17 +286,17 @@ impl Serialize for schnorr::Signature  {
 }
 
 impl Deserialize for schnorr::Signature {
-    fn deserialize(bytes: &[u8]) -> Result<Self, encode::Error> {
+    fn deserialize(bytes: &[u8]) -> Result<Self, Error> {
         schnorr::Signature::from_slice(bytes)
             .map_err(|e| match e {
                 schnorr::Error::InvalidSighashType(flag) => {
-                    encode::Error::from(psbt::Error::NonStandardSighashType(flag as u32))
+                    Error::NonStandardSighashType(flag as u32)
                 }
                 schnorr::Error::InvalidSignatureSize(_) => {
-                    encode::Error::ParseFailed("Invalid Schnorr signature length")
+                    Error::ParseFailed("Invalid Schnorr signature length")
                 }
                 schnorr::Error::Secp256k1(..) => {
-                    encode::Error::ParseFailed("Invalid Schnorr signature")
+                    Error::ParseFailed("Invalid Schnorr signature")
                 }
             })
     }
@@ -313,7 +313,7 @@ impl Serialize for (XOnlyPublicKey, TapLeafHash) {
 }
 
 impl Deserialize for (XOnlyPublicKey, TapLeafHash) {
-    fn deserialize(bytes: &[u8]) -> Result<Self, encode::Error> {
+    fn deserialize(bytes: &[u8]) -> Result<Self, Error> {
         if bytes.len() < 32 {
             return Err(io::Error::from(io::ErrorKind::UnexpectedEof).into())
         }
@@ -330,9 +330,9 @@ impl Serialize for ControlBlock {
 }
 
 impl Deserialize for ControlBlock {
-    fn deserialize(bytes: &[u8]) -> Result<Self, encode::Error> {
+    fn deserialize(bytes: &[u8]) -> Result<Self, Error> {
         Self::from_slice(bytes)
-            .map_err(|_| encode::Error::ParseFailed("Invalid control block"))
+            .map_err(|_| Error::ParseFailed("Invalid control block"))
     }
 }
 
@@ -347,14 +347,14 @@ impl Serialize for (Script, LeafVersion) {
 }
 
 impl Deserialize for (Script, LeafVersion) {
-    fn deserialize(bytes: &[u8]) -> Result<Self, encode::Error> {
+    fn deserialize(bytes: &[u8]) -> Result<Self, Error> {
         if bytes.is_empty() {
             return Err(io::Error::from(io::ErrorKind::UnexpectedEof).into())
         }
         // The last byte is LeafVersion.
         let script = Script::deserialize(&bytes[..bytes.len() - 1])?;
         let leaf_ver = LeafVersion::from_consensus(bytes[bytes.len() - 1])
-            .map_err(|_| encode::Error::ParseFailed("invalid leaf version"))?;
+            .map_err(|_| Error::ParseFailed("invalid leaf version"))?;
         Ok((script, leaf_ver))
     }
 }
@@ -371,7 +371,7 @@ impl Serialize for (Vec<TapLeafHash>, KeySource) {
 }
 
 impl Deserialize for (Vec<TapLeafHash>, KeySource) {
-    fn deserialize(bytes: &[u8]) -> Result<Self, encode::Error> {
+    fn deserialize(bytes: &[u8]) -> Result<Self, Error> {
         let (leafhash_vec, consumed) = deserialize_partial::<Vec<TapLeafHash>>(bytes)?;
         let key_source = KeySource::deserialize(&bytes[consumed..])?;
         Ok((leafhash_vec, key_source))
@@ -401,25 +401,25 @@ impl Serialize for TapTree {
 }
 
 impl Deserialize for TapTree {
-    fn deserialize(bytes: &[u8]) -> Result<Self, encode::Error> {
+    fn deserialize(bytes: &[u8]) -> Result<Self, Error> {
         let mut builder = TaprootBuilder::new();
         let mut bytes_iter = bytes.iter();
         while let Some(depth) = bytes_iter.next() {
-            let version = bytes_iter.next().ok_or(encode::Error::ParseFailed("Invalid Taproot Builder"))?;
+            let version = bytes_iter.next().ok_or(Error::ParseFailed("Invalid Taproot Builder"))?;
             let (script, consumed) = deserialize_partial::<Script>(bytes_iter.as_slice())?;
             if consumed > 0 {
                 bytes_iter.nth(consumed - 1);
             }
 
             let leaf_version = LeafVersion::from_consensus(*version)
-                .map_err(|_| encode::Error::ParseFailed("Leaf Version Error"))?;
+                .map_err(|_| Error::ParseFailed("Leaf Version Error"))?;
             builder = builder.add_leaf_with_ver(*depth, script, leaf_version)
-                .map_err(|_| encode::Error::ParseFailed("Tree not in DFS order"))?;
+                .map_err(|_| Error::ParseFailed("Tree not in DFS order"))?;
         }
         if builder.is_finalizable() && !builder.has_hidden_nodes() {
             Ok(TapTree(builder))
         } else {
-            Err(encode::Error::ParseFailed("Incomplete taproot Tree"))
+            Err(Error::ParseFailed("Incomplete taproot Tree"))
         }
     }
 }

@@ -72,11 +72,11 @@ impl fmt::Display for Key {
 }
 
 impl Key {
-    pub(crate) fn decode<R: io::Read + ?Sized>(r: &mut R) -> Result<Self, encode::Error> {
+    pub(crate) fn decode<R: io::Read + ?Sized>(r: &mut R) -> Result<Self, Error> {
         let VarInt(byte_size): VarInt = Decodable::consensus_decode(r)?;
 
         if byte_size == 0 {
-            return Err(Error::NoMorePairs.into());
+            return Err(Error::NoMorePairs);
         }
 
         let key_byte_size: u64 = byte_size - 1;
@@ -85,7 +85,7 @@ impl Key {
             return Err(encode::Error::OversizedVectorAllocation {
                 requested: key_byte_size as usize,
                 max: MAX_VEC_SIZE,
-            })
+            })?
         }
 
         let type_value: u8 = Decodable::consensus_decode(r)?;
@@ -125,14 +125,14 @@ impl Serialize for Pair {
 }
 
 impl Deserialize for Pair {
-    fn deserialize(bytes: &[u8]) -> Result<Self, encode::Error> {
+    fn deserialize(bytes: &[u8]) -> Result<Self, Error> {
         let mut decoder = Cursor::new(bytes);
         Pair::decode(&mut decoder)
     }
 }
 
 impl Pair {
-    pub(crate) fn decode<R: io::Read + ?Sized>(r: &mut R) -> Result<Self, encode::Error> {
+    pub(crate) fn decode<R: io::Read + ?Sized>(r: &mut R) -> Result<Self, Error> {
         Ok(Pair {
             key: Key::decode(r)?,
             value: Decodable::consensus_decode(r)?,
