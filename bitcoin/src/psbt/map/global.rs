@@ -142,7 +142,7 @@ impl PartiallySignedTransaction {
                                 let child_count = pair.value.len() / 4 - 1;
                                 let mut decoder = Cursor::new(pair.value);
                                 let mut fingerprint = [0u8; 4];
-                                decoder.read_exact(&mut fingerprint[..]);
+                                decoder.read_exact(&mut fingerprint[..]).map_err(|_| Error::ParseFailed("Can't read global xpub fingerprint"))?;
                                 let mut path = Vec::<ChildNumber>::with_capacity(child_count);
                                 while let Ok(index) = u32::consensus_decode(&mut decoder) {
                                     path.push(ChildNumber::from(index))
