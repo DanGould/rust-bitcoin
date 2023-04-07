@@ -84,22 +84,21 @@ impl Version {
 pub struct PartiallySignedTransaction {
     /// The unsigned transaction, scriptSigs and witnesses for each input must be empty.
     pub unsigned_tx: Transaction,
-    /// The version number of this PSBT. If missing when serialized, the version number is 0.
-    pub version: Version,
     /// A global map from extended public keys to the used key fingerprint and
     /// derivation path as defined by BIP 32.
     pub xpub: BTreeMap<ExtendedPubKey, KeySource>,
-    /// Global proprietary key-value pairs.
-    #[cfg_attr(feature = "serde", serde(with = "crate::serde_utils::btreemap_as_seq_byte_values"))]
-    pub proprietary: BTreeMap<raw::ProprietaryKey, Vec<u8>>,
-    /// Unknown global key-value pairs.
-    #[cfg_attr(feature = "serde", serde(with = "crate::serde_utils::btreemap_as_seq_byte_values"))]
-    pub unknown: BTreeMap<raw::Key, Vec<u8>>,
-
     /// The corresponding key-value map for each input in the unsigned transaction.
     pub inputs: Vec<Input>,
     /// The corresponding key-value map for each output in the unsigned transaction.
     pub outputs: Vec<Output>,
+    /// The version number of this PSBT. If missing when serialized, the version number is 0.
+    pub version: Version,
+     /// Global proprietary key-value pairs.
+     #[cfg_attr(feature = "serde", serde(with = "crate::serde_utils::btreemap_as_seq_byte_values"))]
+     pub proprietary: BTreeMap<raw::ProprietaryKey, Vec<u8>>,
+     /// Unknown global key-value pairs.
+     #[cfg_attr(feature = "serde", serde(with = "crate::serde_utils::btreemap_as_seq_byte_values"))]
+     pub unknown: BTreeMap<raw::Key, Vec<u8>>,
 }
 
 impl PartiallySignedTransaction {
