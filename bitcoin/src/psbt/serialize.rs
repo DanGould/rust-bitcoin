@@ -20,7 +20,7 @@ use crate::blockdata::witness::Witness;
 use crate::consensus::encode::{self, deserialize_partial, serialize, Decodable, Encodable};
 use crate::crypto::key::PublicKey;
 use crate::crypto::{ecdsa, taproot};
-use crate::prelude::*;
+use crate::{prelude::*, absolute};
 use crate::psbt::{Error, PartiallySignedTransaction};
 use crate::taproot::{
     ControlBlock, LeafVersion, TapLeafHash, TapNodeHash, TapTree, TaprootBuilder,
@@ -111,6 +111,7 @@ impl PartiallySignedTransaction {
         Ok(global)
     }
 }
+impl_psbt_de_serialize!(absolute::LockTime);
 impl_psbt_de_serialize!(Transaction);
 impl_psbt_de_serialize!(TxOut);
 impl_psbt_de_serialize!(Witness);

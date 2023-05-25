@@ -19,7 +19,7 @@ use crate::blockdata::script::ScriptBuf;
 use crate::blockdata::transaction::{Transaction, TxOut};
 use crate::crypto::ecdsa;
 use crate::crypto::key::{PrivateKey, PublicKey};
-use crate::prelude::*;
+use crate::{prelude::*, absolute};
 pub use crate::sighash::Prevouts;
 use crate::sighash::{self, EcdsaSighashType, SighashCache};
 use crate::Amount;
@@ -87,10 +87,17 @@ pub struct PartiallySignedTransaction {
     /// A global map from extended public keys to the used key fingerprint and
     /// derivation path as defined by BIP 32.
     pub xpub: BTreeMap<ExtendedPubKey, KeySource>,
+        /// The version number of the transaction being created. Note that this is not the same as
+    /// the PSBT version number.
+    pub tx_version: Option<u32>,
+    /// The locktime to use if not inputs specify a required locktime.
+    pub fallback_locktime: Option<absolute::LockTime>,
     /// The corresponding key-value map for each input in the unsigned transaction.
     pub inputs: Vec<Input>,
     /// The corresponding key-value map for each output in the unsigned transaction.
     pub outputs: Vec<Output>,
+    /// Indicate whether inputs, outputs, or signature hash may be modified
+    pub tx_modifiable_flags: Option<u8>,
     /// The version number of this PSBT. If missing when serialized, the version number is 0.
     pub version: Version,
      /// Global proprietary key-value pairs.

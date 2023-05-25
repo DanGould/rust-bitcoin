@@ -60,6 +60,24 @@ impl Map for PartiallySignedTransaction {
             });
         }
 
+        if let Some(tx_version) = self.tx_version {
+            rv.push(raw::Pair {
+                key: raw::Key { type_value: PSBT_GLOBAL_TX_VERSION, key: vec![] },
+                value: tx_version.to_le_bytes().to_vec(),
+            });
+        }
+
+        impl_psbt_get_pair! {
+            rv.push(self.fallback_locktime, PSBT_GLOBAL_FALLBACK_LOCKTIME)
+        };
+
+        if let Some(tx_modifiable_flags) = self.tx_modifiable_flags {
+            rv.push(raw::Pair {
+                key: raw::Key { type_value: PSBT_GLOBAL_TX_MODIFIABLE, key: vec![] },
+                value: tx_modifiable_flags.to_le_bytes().to_vec(),
+            });
+        }
+
         // Serializing version only for non-default value; otherwise test vectors fail
         if self.version > Version::PsbtV0 {
             rv.push(raw::Pair {
